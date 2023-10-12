@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Link Saver</title>
+    <link rel="stylesheet" type="text/css" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div>
+        <h2>Create a Category</h2>
+        <input type="text" id="newCategory" placeholder="New Category" />
+        <button id="createCategoryButton">Create</button>
+      </div>
+      <div>
+        <h2>Save Current Page</h2>
+        <input type="text" id="category" placeholder="Category" readonly />
+        <input type="text" id="linkName" placeholder="Link Name" readonly />
+        <button id="saveButton">Save</button>
+      </div>
+      <div>
+        <h2>Categories</h2>
+        <ul id="categoriesList"></ul>
+      </div>
+      <div id="popupContent">
+        <!-- Your existing popup content here -->
+        <button id="viewSavedPagesButton">View Saved Pages</button>
+      </div>
+    </div>
+
+    <div id="savedPagesContent">
+      <!-- Display saved pages here -->
+      <h1>Saved Pages</h1>
+      <ul id="savedPagesList">
+        <!-- Saved pages will be displayed here -->
+      </ul>
+      <button id="returnButton">Return to Popup</button>
+    </div>
+
+    <!-- Custom alert modal -->
+    <div id="customAlert" class="alert">
+      <span class="closebtn" id="alertCloseButton">&times;</span>
+      <p id="alertMessage">This is a custom alert message.</p>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
