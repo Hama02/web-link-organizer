@@ -3,37 +3,59 @@
   <head>
     <title>Link Saver</title>
     <link rel="stylesheet" type="text/css" href="popup.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
   </head>
   <body>
     <div class="container">
       <div>
-        <h2>Create a Category</h2>
-        <input type="text" id="newCategory" placeholder="New Category" />
-        <button id="createCategoryButton">Create</button>
-      </div>
-      <div>
         <h2>Save Current Page</h2>
-        <input type="text" id="category" placeholder="Category" readonly />
-        <input type="text" id="linkName" placeholder="Link Name" readonly />
-        <button id="saveButton">Save</button>
+        <div class="inputs">
+          <input type="text" id="linkName" placeholder="Link Name" readonly />
+        </div>
       </div>
-      <div>
-        <h2>Categories</h2>
-        <ul id="categoriesList"></ul>
-      </div>
-      <div id="popupContent">
-        <!-- Your existing popup content here -->
+      <div id="popupContent" style="display: flex; gap: 5px">
+        <button id="saveButton">Save Page</button>
         <button id="viewSavedPagesButton">View Saved Pages</button>
       </div>
     </div>
 
     <div id="savedPagesContent">
+      <div>
+        <h2>Create a Category</h2>
+        <input type="text" id="newCategory" placeholder="New Category" />
+        <button id="createCategoryButton">Create</button>
+      </div>
       <!-- Display saved pages here -->
-      <h1>Saved Pages</h1>
-      <ul id="savedPagesList">
-        <!-- Saved pages will be displayed here -->
-      </ul>
+      <div>
+        <div
+          id="categoriesList"
+          ondragover="allowDrop(event)"
+          ondrop="drop(event)"
+        ></div>
+      </div>
       <button id="returnButton">Return to Popup</button>
+    </div>
+
+    <div id="editPageContent" style="display: none">
+      <div>
+        <h2>Edit Page</h2>
+        <div class="edit-inputs">
+          <select
+            name="categories"
+            id="select_cat"
+            style="padding: 10px"
+          ></select>
+          <input type="text" id="linkname" placeholder="LinkName" />
+          <input type="text" id="url" placeholder="Url" disabled />
+          <div style="display: flex; gap: 5px">
+            <button id="save-edit">Save Changes</button>
+            <button id="return-btn">Return</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Custom alert modal -->
@@ -43,5 +65,6 @@
     </div>
 
     <script src="popup.js"></script>
+    <script src="dragdrop.js"></script>
   </body>
 </html>
