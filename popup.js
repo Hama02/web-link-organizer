@@ -26,35 +26,88 @@ function addCategory(categoryName) {
 // Function to delete a category by name
 function deleteCategory(categoryName) {
   // Get the current list of categories from storage
-  chrome.storage.sync.get({ categories: [] }, function (data) {
+  chrome.storage.sync.get({ categories: [], pages: [] }, function (data) {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError);
       return;
     }
 
     let categories = data.categories;
+    let pages = data.pages;
     // Find and remove the category with the specified name
     categories = categories.filter((category) => category !== categoryName);
-
+    let index = null;
+    for (let i = 0; i < pages.length; i++) {
+      if (pages[i].categories.includes(categoryName)) {
+        index = i;
+      }
+    }
+    if (index) {
+      if (pages[index].categories.length === 1) {
+        pages.splice(index, 1);
+      } else {
+        pages[index].categories.splice(
+          pages[index].categories.indexOf(categoryName),
+          1
+        );
+      }
+    }
     // Update the list of categories in storage
-    chrome.storage.sync.set({ categories: categories }, function () {
+    chrome.storage.sync.set(
+      { categories: categories, pages: pages },
+      function () {
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError);
+          return;
+        }
+        // After successfully deleting the category, update the UI to remove it
+        refreshCategoryList();
+      }
+    );
+  });
+}
+
+// Function to get all opening tabls urls
+function bulk() {
+  chrome.tabs.query({}, function (tabs) {
+    chrome.storage.sync.get({ pages: [] }, function (data) {
       if (chrome.runtime.lastError) {
         console.error(chrome.runtime.lastError);
         return;
       }
-
-      // After successfully deleting the category, update the UI to remove it
-      refreshCategoryList();
+      const savedPages = data.pages;
+      tabs.forEach((tab) => {
+        const pageTitle = tab.title;
+        const pageUrl = new URL(tab.url);
+        const pageDomain = pageUrl.hostname;
+        // Combine the domain and title into the suggested name
+        const linkName = `${pageDomain} - ${pageTitle}`;
+        const pageData = {
+          categories: ["Home"],
+          linkName,
+          url: tab.url,
+        };
+        // Add the new page data to the array
+        savedPages.push(pageData);
+      });
+      chrome.storage.sync.set({ pages: savedPages }, function () {
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError);
+          return;
+        }
+        showCustomAlert("Pages saved successfully.");
+      });
     });
   });
 }
+
+document.getElementById("bulk").addEventListener("click", bulk);
 
 // Handle user input to create a new category
 document
   .getElementById("createCategoryButton")
   .addEventListener("click", function () {
     const newCategory = document.getElementById("newCategory").value;
-
     if (newCategory.trim() !== "") {
       addCategory(newCategory);
     } else {
@@ -69,7 +122,6 @@ function refreshCategoryList() {
       console.error(chrome.runtime.lastError);
       return;
     }
-
     const categories = data.categories;
     const categoriesList = document.getElementById("categoriesList");
     categoriesList.innerHTML = "";
@@ -122,56 +174,63 @@ function displaySavedPages() {
       document.querySelector(`.${cat}`).innerHTML = "";
     });
     const savedPages = data.pages;
-    let i = 0;
     for (const page of savedPages) {
-      const pageList = document.querySelector(`.${page.category}`);
-      if (!pageList) {
-        return;
-      }
-      const li = document.createElement("li");
-      const link = document.createElement("a");
-      const i = document.createElement("img");
-      i.src = "./icons/edit.svg";
-      i.className = "edit-icon";
-      link.textContent = `${page.linkName}`;
-      link.href = page.url;
-      link.target = "_blank"; // Open link in a new tab
-      link.style.width = "268px";
-
-      const deleteIcon = document.createElement("img");
-      deleteIcon.src = "./icons/delete.png";
-      deleteIcon.className = "delete-icon";
-
-      // Initially hide the delete icon
-      deleteIcon.style.opacity = 0;
-
-      // Add a click event to delete the saved page
-      deleteIcon.addEventListener("click", () => {
-        const pageIndex = savedPages.findIndex(
-          (savedPage) => savedPage.url === page.url
-        ); // Find the index of the page to delete
-        if (pageIndex !== -1) {
-          savedPages.splice(pageIndex, 1); // Remove the saved page from the array
-          chrome.storage.sync.set({ pages: savedPages }, () => {
-            refreshCategoryList(); // Re-display the updated saved pages
-          });
+      for (const page_cat of page.categories) {
+        const pageList = document.querySelector(`.${page_cat}`);
+        if (!pageList) {
+          return;
         }
-      });
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        const i = document.createElement("img");
+        i.src = "./icons/edit.svg";
+        i.className = "edit-icon";
+        link.textContent = `${page.linkName}`;
+        link.href = page.url;
+        link.target = "_blank"; // Open link in a new tab
+        link.style.width = "268px";
 
-      i.addEventListener("click", () => {
-        displayEditContent();
-        editPage(page);
-      });
-      li.addEventListener("mouseenter", () => {
-        deleteIcon.style.opacity = 1;
-        deleteIcon.style.transition = "opacity 0.3s ease"; // Smooth transition
-      });
-      li.addEventListener("mouseleave", () => {
+        const deleteIcon = document.createElement("img");
+        deleteIcon.src = "./icons/delete.png";
+        deleteIcon.className = "delete-icon";
+
+        // Initially hide the delete icon
         deleteIcon.style.opacity = 0;
-      });
 
-      li.append(link, i, deleteIcon);
-      pageList.append(li);
+        // Add a click event to delete the saved page
+        deleteIcon.addEventListener("click", () => {
+          const pageIndex = savedPages.findIndex(
+            (savedPage) => savedPage.url === page.url
+          );
+          if (pageIndex !== -1) {
+            savedPages[pageIndex].categories.splice(
+              savedPages[pageIndex].categories.indexOf(page_cat),
+              1
+            );
+            if (savedPages[pageIndex].categories.length == 0) {
+              savedPages.splice(pageIndex, 1);
+            }
+            chrome.storage.sync.set({ pages: savedPages }, () => {
+              refreshCategoryList(); // Re-display the updated saved pages
+            });
+          }
+        });
+
+        i.addEventListener("click", () => {
+          displayEditContent();
+          editPage(page);
+        });
+        li.addEventListener("mouseenter", () => {
+          deleteIcon.style.opacity = 1;
+          deleteIcon.style.transition = "opacity 0.3s ease"; // Smooth transition
+        });
+        li.addEventListener("mouseleave", () => {
+          deleteIcon.style.opacity = 0;
+        });
+
+        li.append(link, i, deleteIcon);
+        pageList.append(li);
+      }
     }
   });
 }
@@ -196,7 +255,6 @@ function suggestLinkName() {
 
 // Function to handle saving the page
 function savePage() {
-  // const category = document.getElementById("category").value.trim();
   const linkName = document.getElementById("linkName").value;
   if (linkName === "") {
     showCustomAlert("Page Already Saved!");
@@ -207,7 +265,7 @@ function savePage() {
     const pageUrl = tabs[0].url;
     // Prepare the data for the new page
     const pageData = {
-      category: "Home",
+      categories: ["Home"],
       linkName: linkName,
       url: pageUrl, // Include the URL in the data
     };
@@ -233,61 +291,6 @@ function savePage() {
     });
   });
 }
-
-// Function to load and display saved pages
-// function displaySavedPages() {
-//   chrome.storage.sync.get({ pages: [] }, function (data) {
-//     if (chrome.runtime.lastError) {
-//       console.error(chrome.runtime.lastError);
-//       return;
-//     }
-
-//     const savedPages = data.pages;
-//     const savedPagesList = document.querySelectorAll("#savedPagesList");
-//     if (!savedPagesList) {
-//       return;
-//     }
-//     console.log(savedPages);
-//     return;
-//     savedPagesList.innerHTML = "";
-
-//     for (const [index, page] of savedPages.entries()) {
-//       const li = document.createElement("li");
-//       const link = document.createElement("a");
-//       link.textContent = `- ${page.linkName}`;
-//       link.href = page.url;
-//       link.target = "_blank"; // Open link in a new tab
-
-//       const deleteIcon = document.createElement("img");
-//       deleteIcon.src = "./icons/delete.png";
-//       deleteIcon.className = "delete-icon";
-
-//       // Initially hide the delete icon
-//       deleteIcon.style.opacity = 0;
-
-//       // Add a click event to delete the saved page
-//       deleteIcon.addEventListener("click", () => {
-//         savedPages.splice(index, 1); // Remove the saved page from the array
-//         chrome.storage.sync.set({ pages: savedPages }, () => {
-//           displaySavedPages(); // Re-display the updated saved pages
-//         });
-//       });
-
-//       li.addEventListener("mouseenter", () => {
-//         deleteIcon.style.opacity = 1;
-//         deleteIcon.style.transition = "opacity 0.3s ease"; // Smooth transition
-//       });
-//       li.addEventListener("mouseleave", () => {
-//         deleteIcon.style.opacity = 0;
-//       });
-
-//       li.appendChild(link);
-//       li.appendChild(deleteIcon);
-//       savedPagesList.appendChild(li);
-//     }
-//   });
-// }
-// Call the function to display saved pages when the page loads
 // Function to display saved pages content
 function displaySavedPagesContent() {
   document.getElementById("savedPagesContent").style.display = "block";
@@ -325,19 +328,25 @@ function showCustomAlert(message) {
 }
 
 function editPage(page) {
-  const cat_select = document.getElementById("select_cat");
-  cat_select.innerHTML = "";
+  const cat_check = document.querySelector(".checkbox_container");
+  cat_check.innerHTML = "";
   chrome.storage.sync.get({ categories: [] }, function (data) {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError);
       return;
     }
     for (const category of data.categories) {
-      const option = document.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      cat_select.appendChild(option);
-      page.category === category ? (option.selected = true) : "";
+      const div = document.createElement("div");
+      div.className = "checkbox";
+      const input = document.createElement("input");
+      const label = document.createElement("label");
+      input.type = "checkbox";
+      input.name = "checkbox";
+      input.value = category;
+      label.textContent = category;
+      div.append(input, label);
+      cat_check.appendChild(div);
+      page.categories.includes(category) ? (input.checked = true) : "";
     }
   });
   const linkname_input = document.querySelector("#linkname");
@@ -348,7 +357,7 @@ function editPage(page) {
 
 function saveChanges() {
   const url = document.querySelector("#url").value;
-  console.log(url);
+  const linkname = document.querySelector("#linkname").value;
   chrome.storage.sync.get({ pages: [] }, function (data) {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError);
@@ -357,18 +366,28 @@ function saveChanges() {
     const { pages } = data;
     const updated_pages = pages.map((page) => {
       if (page.url === url) {
-        page.category = document.getElementById("select_cat").value;
-        page.linkName = document.getElementById("linkname").value;
+        page.linkName = linkname;
+        let checkboxes = document.querySelectorAll('input[name="checkbox"]');
+        checkboxes.forEach((box) => {
+          if (box.checked) {
+            page.categories.includes(box.value)
+              ? ""
+              : page.categories.push(box.value);
+          } else {
+            page.categories.includes(box.value)
+              ? page.categories.splice(page.categories.indexOf(box.value), 1)
+              : "";
+          }
+        });
       }
       return page;
     });
-    console.log(updated_pages);
     chrome.storage.sync.set({ pages: updated_pages }, function () {
       if (chrome.runtime.lastError) {
         console.error(chrome.runtime.lastError);
         return;
       }
-      showCustomAlert("Updated Successfully!!");
+      showCustomAlert("Updated Successfully!");
     });
     displaySavedPages();
   });

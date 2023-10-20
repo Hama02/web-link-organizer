@@ -18,6 +18,7 @@
       </div>
       <div id="popupContent" style="display: flex; gap: 5px">
         <button id="saveButton">Save Page</button>
+        <button id="bulk">Bulk</button>
         <button id="viewSavedPagesButton">View Saved Pages</button>
       </div>
     </div>
@@ -43,11 +44,7 @@
       <div>
         <h2>Edit Page</h2>
         <div class="edit-inputs">
-          <select
-            name="categories"
-            id="select_cat"
-            style="padding: 10px"
-          ></select>
+          <div class="checkbox_container"></div>
           <input type="text" id="linkname" placeholder="LinkName" />
           <input type="text" id="url" placeholder="Url" disabled />
           <div style="display: flex; gap: 5px">
